@@ -3,25 +3,6 @@
 #include <windows.h>
 #include <shellapi.h>
 
-bool IsRegularFile(LPCSTR path) {
-    DWORD dwAttrib = GetFileAttributesA(path);
-
-    // 1. Check if the path exists at all
-    if (dwAttrib == INVALID_FILE_ATTRIBUTES) {
-        return false;
-    }
-
-    // 2. Ensure it is not a directory
-    if (dwAttrib & FILE_ATTRIBUTE_DIRECTORY) {
-        return false;
-    }
-
-    // Optional: Exclude system/device files if necessary
-    // if (dwAttrib & FILE_ATTRIBUTE_DEVICE) return false;
-
-    return true;
-}
-
 int main(int argc, char **argv)
 {
     if (argc != 2) {
@@ -32,28 +13,41 @@ int main(int argc, char **argv)
 
     LPCSTR filePath = argv[1];
 
-    if (IsRegularFile(filePath)) {
-        HINSTANCE result = ShellExecuteA(
-            NULL,
-            "open",
-            filePath,
-            NULL,
-            NULL,
-            SW_SHOWNORMAL
-        );
+    auto result = (INT_PTR) ShellExecuteA(
+        NULL,
+        "open",
+        filePath,
+        NULL,
+        NULL,
+        SW_SHOWNORMAL
+    );
 
-        if ((INT_PTR) result <= 32) {
-            std::cerr << "Application failed to launch. Error: " << (INT_PTR)result << std::endl;
-
-            return 2;
-        }
-    }
-    else {
-        std::cerr << "Error: File does not exist or is a directory." << std::endl;
-
-        return 3;
+    if (result > 32) {
+        return 0;  //All good
     }
 
-    return 0;
+    const char* msg = NULL;
+
+    switch (result) {
+    case ERROR_FILE_NOT_FOUND:
+    case ERROR_PATH_NOT_FOUND:
+        msg = "File not found.";
+        break;
+    case SE_ERR_ACCESSDENIED:
+        msg = "Access denied.";
+        break;
+    case SE_ERR_NOASSOC:
+    case SE_ERR_ASSOCINCOMPLETE:
+        msg = "Cannot find a program associated with this file.";
+        break;
+    default:
+        msg = "Could not open the file.";
+    }
+
+    if (msg != nullptr) {
+        std::cerr << msg << std::endl;
+    }
+
+    return 2;
 }
 
