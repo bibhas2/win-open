@@ -2,18 +2,16 @@
 #include <iostream>
 #include <windows.h>
 #include <shellapi.h>
+#include "win-open.h"
 
-int main(int argc, char **argv)
+/*
+Opens a file using the associated program.
+
+Return: 0 if successful, 1 otherwise.
+*/
+int open_file(LPCSTR filePath)
 {
-    if (argc != 2) {
-        std::cerr << "Usage: open file" << std::endl;
-
-        return 1;
-    }
-
-    LPCSTR filePath = argv[1];
-
-    auto result = (INT_PTR) ShellExecuteA(
+    auto result = (INT_PTR)ShellExecuteA(
         NULL,
         "open",
         filePath,
@@ -31,23 +29,42 @@ int main(int argc, char **argv)
     switch (result) {
     case ERROR_FILE_NOT_FOUND:
     case ERROR_PATH_NOT_FOUND:
-        msg = "File not found.";
+        msg = "File not found";
         break;
     case SE_ERR_ACCESSDENIED:
-        msg = "Access denied.";
+        msg = "Access denied";
         break;
     case SE_ERR_NOASSOC:
     case SE_ERR_ASSOCINCOMPLETE:
-        msg = "Cannot find a program associated with this file.";
+        msg = "Cannot find a program associated with this file";
         break;
     default:
-        msg = "Could not open the file.";
+        msg = "Could not open the file";
     }
 
     if (msg != nullptr) {
-        std::cerr << msg << std::endl;
+        std::cerr << msg << ": " << filePath << ". Error: " << result << std::endl;
     }
 
-    return 2;
+    return 1;
+}
+
+int main(int argc, char **argv)
+{
+    if (argc < 2) {
+        std::cerr << "Usage: open files..." << std::endl;
+
+        return 1;
+    }
+
+    int num_failures = 0;
+
+    for (int i = 1; i < argc; ++i) {
+        LPCSTR filePath = argv[i];
+
+        num_failures += open_file(filePath);
+    }
+
+    return num_failures;
 }
 
